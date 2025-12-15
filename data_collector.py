@@ -396,30 +396,34 @@ def push_data_to_supabase(flat_data):
 # ... (Phần trên giữ nguyên) ...
 
 # *** HÀM MAIN (ĐÃ SỬA CHO GITHUB ACTIONS) ***
+# *** HÀM MAIN (ĐÃ FIX LỖI) ***
 def main():
     log("🚀 BẮT ĐẦU CHẠY TRÊN GITHUB ACTIONS...")
     
+    # 1. Đọc danh sách địa điểm
     active_locations = load_locations_from_csv("location.csv")
     n_locations = len(active_locations)
     
-    # 1. Thu thập dữ liệu từ GDACS
-    gdacs_events = fetch_disaster_data()
-    write_events_to_database(gdacs_events)
+    # --- PHẦN SỬA LỖI: BỎ CÁC HÀM CŨ GÂY LỖI ---
+    # gdacs_events = fetch_disaster_data() 
+    # write_events_to_database(gdacs_events) <--- DÒNG NÀY GÂY LỖI NÊN MÌNH ĐÃ COMMENT LẠI
     
     # 2. Thu thập dữ liệu thời tiết từng điểm
     for idx, loc in enumerate(active_locations):
+        # In log ra để biết đang chạy đến đâu
         log(f"➡️ Xử lý {idx+1}/{n_locations}: {loc['name']}")
+        
         result = process_single_location(loc['lat'], loc['lon'], loc['name'])
         
         if result:
             flat, db_ev = result
-            # Đẩy lên Supabase
+            
+            # Đẩy lên Supabase (Chỉ giữ lại cái này là quan trọng nhất)
             push_data_to_supabase(flat)
-            # Ghi vào DB local (nếu cần, nhưng trên GitHub Actions DB này sẽ mất sau khi chạy xong)
-            # write_events_to_database([db_ev]) 
+            
+            # write_events_to_database([db_ev]) <--- BỎ DÒNG NÀY LUÔN VÌ GÂY LỖI TƯƠNG TỰ
             
     log("✅ ĐÃ HOÀN TẤT TOÀN BỘ. KẾT THÚC.")
-    # KHÔNG CÒN WHILE TRUE, KHÔNG CÒN SLEEP
-    
+
 if __name__ == "__main__":
     main()
