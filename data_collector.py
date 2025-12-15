@@ -393,42 +393,33 @@ def push_data_to_supabase(flat_data):
         print(f"❌ Lỗi đẩy Supabase: {e}")
 
 # *** HÀM MAIN ***
+# ... (Phần trên giữ nguyên) ...
+
+# *** HÀM MAIN (ĐÃ SỬA CHO GITHUB ACTIONS) ***
 def main():
+    log("🚀 BẮT ĐẦU CHẠY TRÊN GITHUB ACTIONS...")
+    
     active_locations = load_locations_from_csv("location.csv")
     n_locations = len(active_locations)
-    n_keys = len(OWM_API_KEYS_LIST) 
     
-    if n_keys == 0: log("❌ LỖI: Không tìm thấy API Key."); return
-
-    TARGET_CYCLE_MINUTES = max(15, int(120 / n_keys))
-    estimated_execution_time = n_locations * 2 
-    UPDATE_INTERVAL = max(0, (TARGET_CYCLE_MINUTES * 60) - estimated_execution_time)
+    # 1. Thu thập dữ liệu từ GDACS
+    gdacs_events = fetch_disaster_data()
+    write_events_to_database(gdacs_events)
     
-    log(f"Hệ thống All-in-One: {n_locations} điểm. Chu kỳ: {TARGET_CYCLE_MINUTES} phút.")
-
-    while True:
-        log("🔄 [Collector] Bắt đầu chu kỳ...")
-        csv_buffer = []; db_buffer = []
+    # 2. Thu thập dữ liệu thời tiết từng điểm
+    for idx, loc in enumerate(active_locations):
+        log(f"➡️ Xử lý {idx+1}/{n_locations}: {loc['name']}")
+        result = process_single_location(loc['lat'], loc['lon'], loc['name'])
         
-        db_buffer.extend(fetch_disaster_data()) # GDACS
-        
-        for idx, loc in enumerate(active_locations):
-            if idx % 10 == 0: log(f"➡️ Xử lý {idx+1}/{n_locations}: {loc['name']}")
+        if result:
+            flat, db_ev = result
+            # Đẩy lên Supabase
+            push_data_to_supabase(flat)
+            # Ghi vào DB local (nếu cần, nhưng trên GitHub Actions DB này sẽ mất sau khi chạy xong)
+            # write_events_to_database([db_ev]) 
             
-            result = process_single_location(loc['lat'], loc['lon'], loc['name'])
-            if result:
-                flat, db_ev = result
-                csv_buffer.append(flat)
-                db_buffer.append(db_ev)
-                push_data_to_supabase(flat)
-            time.sleep(1) 
-        
-        try:
-            pass # Tạm thời bỏ qua để không báo lỗi đỏ lòm
-        except Exception as e:
-            print(f"⚠️ Không gọi được Backend trigger: {e}")
-
-        log(f"✅ Hoàn tất. Chờ {UPDATE_INTERVAL/60:.1f} phút.\n")
-        time.sleep(UPDATE_INTERVAL)
+    log("✅ ĐÃ HOÀN TẤT TOÀN BỘ. KẾT THÚC.")
+    # KHÔNG CÒN WHILE TRUE, KHÔNG CÒN SLEEP
+    
 if __name__ == "__main__":
-    main() 
+    main()
