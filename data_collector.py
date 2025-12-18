@@ -350,9 +350,9 @@ def push_data_to_supabase(flat_data):
         )
         cur = conn.cursor()
 
-        # 2. Câu lệnh SQL Insert (Khớp 100% với các cột bảng hazard_data)
+        # 2. Câu lệnh SQL Insert (Khớp 100% với các cột bảng vietnam_weather_disaster)
         sql = """
-            INSERT INTO hazard_data (
+            INSERT INTO vietnam_weather_disaster (
                 "timestamp", location, lat, lon, 
                 temperature, humidity, pressure, wind_speed,
                 precip6, precip24, gust6, river_discharge,
